@@ -1,18 +1,20 @@
 package controllers.ai;
 
 import controllers.PlayerController;
+import gamecore.Array2D;
 import gamecore.Coords;
 import gamecore.GomokuBoard;
 import gamecore.enums.Player;
 import gamecore.enums.TileState;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.stream.Stream;
 
 /**
- * Représente un IA qui cherche les coups en se positionnant sur chaque case, puis en vérifiant le contenu des 4 cases autour dans les 8 directions
+ * Représente une IA qui cherche les coups en se positionnant sur chaque case, puis en vérifiant le contenu des 4 cases autour dans les 8 directions
  */
 public class AI_Random extends PlayerController
 {
@@ -31,8 +33,24 @@ public class AI_Random extends PlayerController
 
 	public int evaluateBoard(GomokuBoard board, Player player)
 	{
-		GomokuBoard evaluationBoard = new GomokuBoard();
-		
+		GomokuBoard evaluationBoard = board.clone();
+		int evaluation = 0;
+
+		// Liste des directions à tester pour trouver un alignement de 5 pièces
+		final int[][] DIRECTIONS_TO_CHECK = {
+				{-1, -1}, // Diagonales bas-gauche haut-droite
+				{-1, 0}, // Verticales
+				{-1, 1}, // Diagonales haut-gauche bas-droite
+				{0, 1} // Horizontales
+		};
+
+		ArrayList<Array2D> positionInBoard = evaluationBoard.findPositionInBoard();
+
+		for(Array2D pos : positionInBoard)
+		{
+
+		}
+
 		/*
 		Idée tirée de chatGPT :
 		5 alignées = ∞ (victoire)
@@ -45,7 +63,6 @@ public class AI_Random extends PlayerController
 
 		Vu en cours :
 		Positions stratégiques fortes (type T, X (avec le centre vide, triangle, etc.) devraient rapporter des points elles aussi
-
 		*/
 		return 0;
 	}
