@@ -68,6 +68,7 @@ public class Game
 			System.out.println();
 			board.print();
 			System.out.println();
+//			System.out.println(evaluateBoard(board, currentPlayer));
 
 			currentPlayer = currentPlayer == Player.White ? Player.Black : Player.White; // Changer de joueur
 		}
@@ -112,4 +113,109 @@ public class Game
 		//startMatch(new AI_Star(2), new AI_Sweep(2)); // Lancer une partie entre une IA Sweep et une IA Star
 	}
 
+
+	//TODO a anelever pour version finale -
+	//Sert pour test afin de voir les niveau d'evaluation
+	public static int evaluateBoard(GomokuBoard board, Player player)
+	{
+		GomokuBoard evaluationBoard = board.clone();
+		int evaluation = 0;
+		int size = GomokuBoard.size;
+		TileState playerTile = player == Player.White ? TileState.White : TileState.Black;
+		TileState opponentTile = player == Player.White ? TileState.Black : TileState.White;
+
+		// Définition du carré central
+		int minCentral = size / 4;
+		int maxCentral = size - size / 4 - 1;
+
+		int[][] directions = { {0, 1}, {1, 0}, {1, 1}, {1, -1} };
+
+		// Evaluation offensive (joueur)
+		for (int row = 0; row < size; row++) {
+			for (int col = 0; col < size; col++) {
+				for (int[] dir : directions) {
+					int count = 0;
+					int r = row, c = col;
+
+					while (r >= 0 && r < size && c >= 0 && c < size && evaluationBoard.get(new Coords(r, c)) == playerTile) {
+						count++;
+						r += dir[0];
+						c += dir[1];
+					}
+
+					if (count > 1) {
+						boolean open1 = false, open2 = false;
+						int beforeR = row - dir[0], beforeC = col - dir[1];
+						if (beforeR >= 0 && beforeR < size && beforeC >= 0 && beforeC < size &&
+								evaluationBoard.get(new Coords(beforeR, beforeC)) == TileState.Empty) {
+							open1 = true;
+						}
+						int afterR = row + count*dir[0], afterC = col + count*dir[1];
+						if (afterR >= 0 && afterR < size && afterC >= 0 && afterC < size &&
+								evaluationBoard.get(new Coords(afterR, afterC)) == TileState.Empty) {
+							open2 = true;
+						}
+						boolean open = open1 && open2;
+
+						int points = 0;
+						if (count >= 5) return Integer.MAX_VALUE;
+						else if (count == 4) points = open ? 10000 : 1000;
+						else if (count == 3) points = open ? 100 : 10;
+						else if (count == 2) points = open ? 5 : 1;
+
+						// Bonus si dans le carré central
+						if (row >= minCentral && row <= maxCentral && col >= minCentral && col <= maxCentral) {
+							points += points / 5;
+						}
+						evaluation += points;
+					}
+				}
+			}
+		}
+
+		// Evaluation défensive (adversaire)
+		for (int row = 0; row < size; row++) {
+			for (int col = 0; col < size; col++) {
+				for (int[] dir : directions) {
+					int count = 0;
+					int r = row, c = col;
+
+					while (r >= 0 && r < size && c >= 0 && c < size && evaluationBoard.get(new Coords(r, c)) == opponentTile) {
+						count++;
+						r += dir[0];
+						c += dir[1];
+					}
+
+					if (count > 1) {
+						boolean open1 = false, open2 = false;
+						int beforeR = row - dir[0], beforeC = col - dir[1];
+						if (beforeR >= 0 && beforeR < size && beforeC >= 0 && beforeC < size &&
+								evaluationBoard.get(new Coords(beforeR, beforeC)) == TileState.Empty) {
+							open1 = true;
+						}
+						int afterR = row + count*dir[0], afterC = col + count*dir[1];
+						if (afterR >= 0 && afterR < size && afterC >= 0 && afterC < size &&
+								evaluationBoard.get(new Coords(afterR, afterC)) == TileState.Empty) {
+							open2 = true;
+						}
+						boolean open = open1 && open2;
+
+						int points = 0;
+						if (count >= 5) return -Integer.MAX_VALUE;
+						else if (count == 4) points = open ? 10000 : 1000;
+						else if (count == 3) points = open ? 100 : 10;
+						else if (count == 2) points = open ? 5 : 1;
+
+						// Bonus si dans le carré central
+						if (row >= minCentral && row <= maxCentral && col >= minCentral && col <= maxCentral) {
+							points += points / 5;
+						}
+						evaluation -= points;
+					}
+				}
+			}
+		}
+
+		return evaluation;
+	}
 }
