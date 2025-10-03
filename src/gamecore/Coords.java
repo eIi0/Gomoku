@@ -49,4 +49,9 @@ public class Coords implements Cloneable {
     public int hashCode() {
         return Objects.hash(row, column);
     }
+
+	public String toString()
+	{
+		return "col : " + column + ", ligne : " + row;
+	}
 }

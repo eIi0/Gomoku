@@ -17,10 +17,13 @@ import java.util.stream.Stream;
 public class AI_Random extends PlayerController
 {
 
+	private int minimaxDepth;
+	private Player playerColor;
 
-	public AI_Random(int minimaxDepth)
+	public AI_Random(int minimaxDepth, GomokuBoard board, Player playerColor)
 	{
-
+		this.minimaxDepth = minimaxDepth;
+		this.playerColor = playerColor;
 	}
 
 	public AI_Random()
@@ -34,8 +37,8 @@ public class AI_Random extends PlayerController
 		GomokuBoard evaluationBoard = board.clone();
 		int evaluation = 0;
 		int size = GomokuBoard.size;
-		TileState playerTile = player == Player.White ? TileState.White : TileState.Black;
-		TileState opponentTile = player == Player.White ? TileState.Black : TileState.White;
+		TileState whiteTileState = TileState.White;
+		TileState blackTileState = TileState.Black;
 
 		// Directions : droite, bas, diagonale droite-bas, diagonale gauche-bas
 		int[][] directions = { {0, 1}, {1, 0}, {1, 1}, {1, -1} };
@@ -46,7 +49,7 @@ public class AI_Random extends PlayerController
 					int count = 0;
 					int r = row, c = col;
 
-					while (r >= 0 && r < size && c >= 0 && c < size && evaluationBoard.get(new Coords(r, c)) == playerTile) {
+					while (r >= 0 && r < size && c >= 0 && c < size && evaluationBoard.get(new Coords(r, c)) == whiteTileState) {
 						count++;
 						r += dir[0];
 						c += dir[1];
@@ -67,7 +70,7 @@ public class AI_Random extends PlayerController
 						}
 
 						boolean open = open1 && open2;
-						if (count >= 5) return Integer.MAX_VALUE; // Victoire !
+						if (count >= 5) return Integer.MAX_VALUE;
 						else if (count == 4) evaluation += open ? 10000 : 1000;
 						else if (count == 3) evaluation += open ? 100 : 10;
 						else if (count == 2) evaluation += open ? 5 : 1;
@@ -85,7 +88,7 @@ public class AI_Random extends PlayerController
 					int count = 0;
 					int r = row, c = col;
 
-					while (r >= 0 && r < size && c >= 0 && c < size && evaluationBoard.get(new Coords(r, c)) == opponentTile)
+					while (r >= 0 && r < size && c >= 0 && c < size && evaluationBoard.get(new Coords(r, c)) == blackTileState)
 					{
 						count++;
 						r += dir[0];
@@ -109,26 +112,28 @@ public class AI_Random extends PlayerController
 						}
 						boolean open = open1 && open2;
 
-						if (count >= 5) return -Integer.MAX_VALUE;
+						if (count >= 5) return Integer.MIN_VALUE;
 						else if (count == 4) evaluation -= open ? 10000 : 1000;
 						else if (count == 3) evaluation -= open ? 100 : 10;
 						else if (count == 2) evaluation -= open ? 5 : 1;
+
 					}
 				}
 			}
 		}
-		evaluation += detectExtendedXShape(evaluationBoard, player);
-		evaluation += detectExtendedPlusShape(evaluationBoard, player);
+		evaluation += detectExtendedXShape(evaluationBoard, whiteTileState);
+		evaluation -= detectExtendedXShape(evaluationBoard, blackTileState);
+		evaluation += detectExtendedPlusShape(evaluationBoard, whiteTileState);
+		evaluation -= detectExtendedPlusShape(evaluationBoard, blackTileState);
 
 		//TODO ajouter la méthode pour les shapes speciales de l'adversaire
 
 		return evaluation;
 	}
 
-	private int detectExtendedXShape(GomokuBoard board, Player player) {
+	private int detectExtendedXShape(GomokuBoard board, TileState playerTile) {
 		int score = 0;
 		int size = GomokuBoard.size;
-		TileState playerTile = player == Player.White ? TileState.White : TileState.Black;
 
 		for (int row = 2; row < size - 2; row++) {
 			for (int col = 2; col < size - 2; col++) {
@@ -152,7 +157,7 @@ public class AI_Random extends PlayerController
 					boolean diagonaleExtend = board.get(new Coords(row - 2, col - 2)) == playerTile
 							&& board.get(new Coords(row + 2, col + 2)) == playerTile;
 					if (isX && diagonaleExtend) {
-						score += 100; // Score à ajuster selon ton barème
+						score += 100;
 					}
 				}
 			}
@@ -160,10 +165,9 @@ public class AI_Random extends PlayerController
 		return score;
 	}
 
-	private int detectExtendedPlusShape(GomokuBoard board, Player player) {
+	private int detectExtendedPlusShape(GomokuBoard board, TileState playerTile) {
 		int score = 0;
 		int size = GomokuBoard.size;
-		TileState playerTile = player == Player.White ? TileState.White : TileState.Black;
 
 		for (int row = 2; row < size - 2; row++) {
 			for (int col = 2; col < size - 2; col++) {
@@ -190,7 +194,7 @@ public class AI_Random extends PlayerController
 					boolean horizontalExtend = board.get(new Coords(row, col - 2)) == playerTile
 							&& board.get(new Coords(row, col + 2)) == playerTile;
 					if (isPlus && (verticalExtend || horizontalExtend)) {
-						score += 100; // Score à ajuster
+						score += 100;
 					}
 				}
 			}
@@ -229,6 +233,109 @@ public class AI_Random extends PlayerController
 	@Override
 	public Coords play(GomokuBoard board, Player player)
 	{
-		return getAvailableMoves(board, player)[0];
+		return minimax(board, this.minimaxDepth, true, playerColor).coords;
 	}
+	public EvaluationVariable minimax(GomokuBoard board, int depth, boolean isMaximizingPlayer, Player player) {
+		// Arrêt si profondeur 0 ou partie finie
+		if (depth == 0) {
+			int eval = minimaxEval(board, player);
+			return new EvaluationVariable(null, eval);
+		}
+//		if (board.getWinnerState() != WinnerState.None)
+//		{
+//			int eval = minimaxEval(board, player);
+//			System.out.println("coords null");
+//			return new EvaluationVariable(null, eval);
+//		}
+		Coords[] moves = getAvailableMoves(board, player);
+//		Coords bestCoords = moves[0];
+		Coords bestCoords = null;
+		int bestEval = isMaximizingPlayer ? -Integer.MAX_VALUE : Integer.MAX_VALUE;
+
+		for (Coords move : moves) {
+			GomokuBoard clonedBoard = board.clone();
+			clonedBoard.set(move, player == Player.White ? TileState.White : TileState.Black);
+			Player nextPlayer = (player == Player.White ? Player.Black : Player.White);
+
+			EvaluationVariable childEval = minimax(clonedBoard, depth - 1, !isMaximizingPlayer, nextPlayer);
+
+			// Indentation pour affichage
+			String tab = "";
+			int depthString = depth;
+			while (depthString != 0) {
+				tab += "  ";
+				depthString--;
+			}
+//			System.out.println(tab + depthString + " " + move + " - Evaluation = " + childEval.evaluationScore);
+
+			if (isMaximizingPlayer) {
+				if (childEval.evaluationScore > bestEval) {
+					bestEval = childEval.evaluationScore;
+					bestCoords = move;
+				}
+			} else {
+				if (childEval.evaluationScore < bestEval) {
+					bestEval = childEval.evaluationScore;
+					bestCoords = move;
+				}
+			}
+		}
+		return new EvaluationVariable(bestCoords, bestEval);
+	}
+
+	public int minimaxEval(GomokuBoard board, Player player) {
+		return evaluateBoard(board, player); // Utilise ta fonction existante
+	}
+//
+//	public EvaluationVariable minimax(GomokuBoard board, int depth, boolean isMaximizingPlayer, Player player) {
+//		if (depth == 0 || board.getWinnerState() != WinnerState.None) {
+//
+//			return evaluateBoard(board, player);
+//		}
+//		Coords[] moves = getAvailableMoves(board, player);
+//		int bestEval;
+//		Coords bestCoords = getAvailableMoves(board, player)[0];
+//		if (isMaximizingPlayer) {
+//			bestEval = -Integer.MAX_VALUE;
+//			for (Coords move : moves) {
+//				GomokuBoard clonedBoard = board.clone();
+//				clonedBoard.set(move, player == Player.White ? TileState.White : TileState.Black);
+//				int eval = minimax(clonedBoard, depth - 1, false, player == Player.White ? Player.Black : Player.White);
+//				String tab = "";
+//				int depthString = depth;
+//				while (depthString != 0)
+//				{
+//					tab+= "  ";
+//					depthString--;
+//				}
+//				System.out.println(tab + depth + move + " - Evaluation = eval");
+//				if (eval > bestEval)
+//				{
+//					bestEval = eval;
+//					bestCoords = move;
+//				}
+//			}
+//		} else {
+//			bestEval = Integer.MAX_VALUE;
+//			for (Coords move : moves) {
+//				GomokuBoard clonedBoard = board.clone();
+//				clonedBoard.set(move, player == Player.White ? TileState.White : TileState.Black);
+//				int eval = minimax(clonedBoard, depth - 1, true, player == Player.White ? Player.Black : Player.White);
+//				String tab = "";
+//				int depthString = depth;
+//				while (depthString != 0)
+//				{
+//					tab+= "  ";
+//					depthString--;
+//				}
+//				System.out.println(tab + depth + move + " - Evaluation = eval");
+//				if (eval < bestEval)
+//				{
+//					bestEval = eval;
+//					bestCoords = move;
+//				}
+//			}
+//		}
+//		return bestCoords;
+//	}
 }

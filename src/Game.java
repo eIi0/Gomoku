@@ -24,9 +24,8 @@ public class Game
 	 * @param player2 Joueur 2
 	 * @return Vainqueur de la partie
 	 */
-	public static WinnerState startMatch(PlayerController player1, PlayerController player2)
+	public static WinnerState startMatch(GomokuBoard board, PlayerController player1, PlayerController player2)
 	{
-		GomokuBoard board = new GomokuBoard();
 		WinnerState winnerState;
 		Player currentPlayer = Player.White;
 
@@ -60,7 +59,7 @@ public class Game
 				player2LongestPlayTime = Math.max(player2LongestPlayTime, moveDuration);
 				player2ShortestPlayTime = Math.min(player2ShortestPlayTime, moveDuration);
 			}
-
+			System.out.println(move);
 			board.set(move, currentPlayer == Player.White ? TileState.White : TileState.Black); // Jouer le coup
 
 			System.out.println("Ligne: " + move.row);
@@ -68,7 +67,7 @@ public class Game
 			System.out.println();
 			board.print();
 			System.out.println();
-//			System.out.println(evaluateBoard(board, currentPlayer));
+			System.out.println(evaluateBoard(board, currentPlayer));
 
 			currentPlayer = currentPlayer == Player.White ? Player.Black : Player.White; // Changer de joueur
 		}
@@ -89,23 +88,51 @@ public class Game
 
 	public static void main(String[] args)
 	{
-
+		GomokuBoard board = new GomokuBoard();
 		System.out.println("Selection du mode de jeu : \n- Humain VS Humain (1) \n- Humain VS IA (2) \n-IA VS IA (3)");
+
+
+		/*
+
+		Test du plateau
+		board.set(1,1,TileState.White);3
+
+		board.set(1,2,TileState.White);
+		board.set(1,3,TileState.White);
+//		board.set(1,4,TileState.White);
+//		board.set(1,5,TileState.White);
+		board.set(2,1,TileState.Black);
+		board.set(2,2,TileState.Black);
+		board.set(2,3,TileState.Black);
+		board.set(2,4,TileState.Black);
+//		board.set(2,5,TileState.Black);
+
+		System.out.println(evaluateBoard(board, Player.White));
+		System.out.println(evaluateBoard(board, Player.Black));
+
+
+		 */
 
 		Scanner sc = new Scanner(System.in);
 		int str = sc.nextInt();
 		switch (str)
 		{
 			case 1:
-				startMatch(new HumanPlayer(), new HumanPlayer());
+				startMatch(board, new HumanPlayer(), new HumanPlayer());
 				break;
 
 			case 2:
-				startMatch(new HumanPlayer(), new AI_Random(2)); // Lancer une partie entre un joueur humain et une IA Sweep
+				System.out.println("Profondeur calcul IA : ");
+				int depthIA = sc.nextInt();
+				startMatch(board, new HumanPlayer(), new AI_Random(depthIA, board, Player.Black)); // Lancer une partie entre un joueur humain et une IA Sweep
 				break;
 
 			case 3:
-				startMatch(new AI_Random(2), new AI_Random(2)); // Lancer une partie entre un joueur humain et une IA Sweep
+				System.out.println("Profondeur calcul IA blanche: ");
+				int depthIAWhite = sc.nextInt();
+				System.out.println("Profondeur calcul IA noire: ");
+				int depthIABlack = sc.nextInt();
+				startMatch(board, new AI_Random(depthIAWhite, board, Player.White), new AI_Random(depthIABlack, board, Player.Black)); // Lancer une partie entre un joueur humain et une IA Sweep
 				break;
 		}
 //            startMatch(new AI_Sweep(2), new AI_Sweep(2)); // Lancer une partie entre deux IA Sweep
@@ -114,30 +141,27 @@ public class Game
 	}
 
 
-	//TODO a anelever pour version finale -
+	//TODO a enlever pour version finale -
 	//Sert pour test afin de voir les niveau d'evaluation
+
 	public static int evaluateBoard(GomokuBoard board, Player player)
 	{
 		GomokuBoard evaluationBoard = board.clone();
 		int evaluation = 0;
 		int size = GomokuBoard.size;
-		TileState playerTile = player == Player.White ? TileState.White : TileState.Black;
-		TileState opponentTile = player == Player.White ? TileState.Black : TileState.White;
+		TileState whiteTileState = TileState.White;
+		TileState blackTileState = TileState.Black;
 
-		// Définition du carré central
-		int minCentral = size / 4;
-		int maxCentral = size - size / 4 - 1;
-
+		// Directions : droite, bas, diagonale droite-bas, diagonale gauche-bas
 		int[][] directions = { {0, 1}, {1, 0}, {1, 1}, {1, -1} };
 
-		// Evaluation offensive (joueur)
 		for (int row = 0; row < size; row++) {
 			for (int col = 0; col < size; col++) {
 				for (int[] dir : directions) {
 					int count = 0;
 					int r = row, c = col;
 
-					while (r >= 0 && r < size && c >= 0 && c < size && evaluationBoard.get(new Coords(r, c)) == playerTile) {
+					while (r >= 0 && r < size && c >= 0 && c < size && evaluationBoard.get(new Coords(r, c)) == whiteTileState) {
 						count++;
 						r += dir[0];
 						c += dir[1];
@@ -145,6 +169,7 @@ public class Game
 
 					if (count > 1) {
 						boolean open1 = false, open2 = false;
+
 						int beforeR = row - dir[0], beforeC = col - dir[1];
 						if (beforeR >= 0 && beforeR < size && beforeC >= 0 && beforeC < size &&
 								evaluationBoard.get(new Coords(beforeR, beforeC)) == TileState.Empty) {
@@ -155,67 +180,137 @@ public class Game
 								evaluationBoard.get(new Coords(afterR, afterC)) == TileState.Empty) {
 							open2 = true;
 						}
-						boolean open = open1 && open2;
 
-						int points = 0;
+						boolean open = open1 && open2;
 						if (count >= 5) return Integer.MAX_VALUE;
-						else if (count == 4) points = open ? 10000 : 1000;
-						else if (count == 3) points = open ? 100 : 10;
-						else if (count == 2) points = open ? 5 : 1;
-
-						// Bonus si dans le carré central
-						if (row >= minCentral && row <= maxCentral && col >= minCentral && col <= maxCentral) {
-							points += points / 5;
-						}
-						evaluation += points;
+						else if (count == 4) evaluation += open ? 10000 : 1000;
+						else if (count == 3) evaluation += open ? 100 : 10;
+						else if (count == 2) evaluation += open ? 5 : 1;
 					}
 				}
 			}
 		}
 
-		// Evaluation défensive (adversaire)
-		for (int row = 0; row < size; row++) {
-			for (int col = 0; col < size; col++) {
-				for (int[] dir : directions) {
+		for (int row = 0; row < size; row++)
+		{
+			for (int col = 0; col < size; col++)
+			{
+				for (int[] dir : directions)
+				{
 					int count = 0;
 					int r = row, c = col;
 
-					while (r >= 0 && r < size && c >= 0 && c < size && evaluationBoard.get(new Coords(r, c)) == opponentTile) {
+					while (r >= 0 && r < size && c >= 0 && c < size && evaluationBoard.get(new Coords(r, c)) == blackTileState)
+					{
 						count++;
 						r += dir[0];
 						c += dir[1];
 					}
 
-					if (count > 1) {
+					if (count > 1)
+					{
 						boolean open1 = false, open2 = false;
 						int beforeR = row - dir[0], beforeC = col - dir[1];
 						if (beforeR >= 0 && beforeR < size && beforeC >= 0 && beforeC < size &&
-								evaluationBoard.get(new Coords(beforeR, beforeC)) == TileState.Empty) {
+								evaluationBoard.get(new Coords(beforeR, beforeC)) == TileState.Empty)
+						{
 							open1 = true;
 						}
-						int afterR = row + count*dir[0], afterC = col + count*dir[1];
+						int afterR = row + count * dir[0], afterC = col + count * dir[1];
 						if (afterR >= 0 && afterR < size && afterC >= 0 && afterC < size &&
-								evaluationBoard.get(new Coords(afterR, afterC)) == TileState.Empty) {
+								evaluationBoard.get(new Coords(afterR, afterC)) == TileState.Empty)
+						{
 							open2 = true;
 						}
 						boolean open = open1 && open2;
 
-						int points = 0;
-						if (count >= 5) return -Integer.MAX_VALUE;
-						else if (count == 4) points = open ? 10000 : 1000;
-						else if (count == 3) points = open ? 100 : 10;
-						else if (count == 2) points = open ? 5 : 1;
+						if (count >= 5) return Integer.MIN_VALUE;
+						else if (count == 4) evaluation -= open ? 10000 : 1000;
+						else if (count == 3) evaluation -= open ? 100 : 10;
+						else if (count == 2) evaluation -= open ? 5 : 1;
 
-						// Bonus si dans le carré central
-						if (row >= minCentral && row <= maxCentral && col >= minCentral && col <= maxCentral) {
-							points += points / 5;
-						}
-						evaluation -= points;
 					}
 				}
 			}
 		}
+		evaluation += detectExtendedXShape(evaluationBoard, whiteTileState);
+		evaluation -= detectExtendedXShape(evaluationBoard, blackTileState);
+		evaluation += detectExtendedPlusShape(evaluationBoard, whiteTileState);
+		evaluation -= detectExtendedPlusShape(evaluationBoard, blackTileState);
+
+		//TODO ajouter la méthode pour les shapes speciales de l'adversaire
 
 		return evaluation;
+	}
+
+	private static int detectExtendedXShape(GomokuBoard board, TileState playerTile) {
+		int score = 0;
+		int size = GomokuBoard.size;
+
+		for (int row = 2; row < size - 2; row++) {
+			for (int col = 2; col < size - 2; col++) {
+				Coords center = new Coords(row, col);
+				if (board.get(center) == TileState.Empty) {
+					// Diagonales autour du centre
+					Coords[] diagonals = {
+							new Coords(row - 1, col - 1),
+							new Coords(row - 1, col + 1),
+							new Coords(row + 1, col - 1),
+							new Coords(row + 1, col + 1)
+					};
+					boolean isX = true;
+					for (Coords d : diagonals) {
+						if (board.get(d) != playerTile) {
+							isX = false;
+							break;
+						}
+					}
+					// Extension sur la diagonale nord-ouest/sud-est
+					boolean diagonaleExtend = board.get(new Coords(row - 2, col - 2)) == playerTile
+							&& board.get(new Coords(row + 2, col + 2)) == playerTile;
+					if (isX && diagonaleExtend) {
+						score += 100;
+					}
+				}
+			}
+		}
+		return score;
+	}
+
+	private static int detectExtendedPlusShape(GomokuBoard board, TileState playerTile) {
+		int score = 0;
+		int size = GomokuBoard.size;
+
+		for (int row = 2; row < size - 2; row++) {
+			for (int col = 2; col < size - 2; col++) {
+				Coords center = new Coords(row, col);
+				if (board.get(center) == TileState.Empty) {
+					// Adjacent orthogonaux
+					Coords[] adjacents = {
+							new Coords(row - 1, col),
+							new Coords(row + 1, col),
+							new Coords(row, col - 1),
+							new Coords(row, col + 1)
+					};
+					boolean isPlus = true;
+					for (Coords a : adjacents) {
+						if (board.get(a) != playerTile) {
+							isPlus = false;
+							break;
+						}
+					}
+					// Extension verticale
+					boolean verticalExtend = board.get(new Coords(row - 2, col)) == playerTile
+							&& board.get(new Coords(row + 2, col)) == playerTile;
+					// Extension horizontale
+					boolean horizontalExtend = board.get(new Coords(row, col - 2)) == playerTile
+							&& board.get(new Coords(row, col + 2)) == playerTile;
+					if (isPlus && (verticalExtend || horizontalExtend)) {
+						score += 100;
+					}
+				}
+			}
+		}
+		return score;
 	}
 }
