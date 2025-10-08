@@ -6,10 +6,8 @@ import gamecore.GomokuBoard;
 import gamecore.enums.Player;
 import gamecore.enums.TileState;
 
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.stream.Stream;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Représente une IA qui cherche les coups en se positionnant sur chaque case, puis en vérifiant le contenu des 4 cases autour dans les 8 directions
@@ -32,7 +30,7 @@ public class AI_Random extends PlayerController
 
 	}
 
-	public int evaluateBoard(GomokuBoard board, Player player)
+	public int evaluateBoard(GomokuBoard board)
 	{
 		GomokuBoard evaluationBoard = board.clone();
 		int evaluation = 0;
@@ -223,32 +221,23 @@ public class AI_Random extends PlayerController
 		return score;
 	}
 
-	public Coords[] getAvailableMoves(GomokuBoard board, Player player)
+	public Coords[] getAvailableMoves(GomokuBoard board)
 	{
-		Coords currentCellCoords = new Coords();
+		List<Coords> moves = new ArrayList<>();
 
-		TileState playerCellState = player == Player.White ? TileState.White : TileState.Black;
-
-		Map<Coords, Integer> moves = new HashMap<>();
-
-		for (currentCellCoords.row = 0; currentCellCoords.row < GomokuBoard.size; currentCellCoords.row++)
+		for (int row = 0; row < GomokuBoard.size; row++)
 		{
-			for (currentCellCoords.column = 0; currentCellCoords.column < GomokuBoard.size; currentCellCoords.column++)
+			for (int col = 0; col < GomokuBoard.size; col++)
 			{
-				if (board.get(currentCellCoords) == TileState.Empty)
-				{ // Si la case est vide
-					board.set(currentCellCoords, playerCellState); // Jouer le coup
-					int score = evaluateBoard(board, player); // Evaluer le coup
-					board.set(currentCellCoords, TileState.Empty); // Annuler le coup
-
-					moves.put(currentCellCoords.clone(), score); // Enregistrer le coup
+				Coords c = new Coords(row, col);
+				if (board.get(c) == TileState.Empty)
+				{
+					moves.add(c);
 				}
 			}
 		}
 
-		Stream<Map.Entry<Coords, Integer>> sorted = moves.entrySet().stream().sorted(Collections.reverseOrder(Map.Entry.comparingByValue()));
-
-		return sorted.map(Map.Entry::getKey).toArray(Coords[]::new);
+		return moves.toArray(new Coords[0]);
 	}
 
 	@Override
@@ -259,19 +248,30 @@ public class AI_Random extends PlayerController
 
 	public EvaluationVariable minimax(GomokuBoard board, int depth, boolean isMaximizingPlayer, Player player)
 	{
+		if (getAvailableMoves(board).length == 224)
+		{
+			if (board.areCoordsValid(6, 6))
+			{
+				return new EvaluationVariable(new Coords(6, 6), Integer.MAX_VALUE);
+			}
+			else
+			{
+				return new EvaluationVariable(new Coords(5, 6), Integer.MAX_VALUE);
+			}
+		}
 		// Profondeur 0 atteinte
 		if (depth == 0)
 		{
-			int eval = minimaxEval(board, player);
-			return new EvaluationVariable(new Coords(), eval);
+			return new EvaluationVariable(new Coords(), minimaxEval(board));
 		}
 
-		Coords[] moves = getAvailableMoves(board, player);
-		Coords bestCoords = moves[moves.length - 1];       //TODO a modifier par mieux
+		Coords[] moves = getAvailableMoves(board);
+		Coords bestCoords = moves[(0)];       //TODO a modifier par mieux --> problème pas de la
 		int bestEval = isMaximizingPlayer ? Integer.MIN_VALUE : Integer.MAX_VALUE;
+		ArrayList<Coords> bestMoves = new ArrayList<Coords>();
 
-		System.out.println("-------------------------------------- new move --------------------------------------");
-		board.print();
+//		System.out.println("-------------------------------------- new move --------------------------------------");
+//		board.print();
 
 		for (Coords move : moves)
 		{
@@ -288,35 +288,47 @@ public class AI_Random extends PlayerController
 			Player nextPlayer = (player == Player.White ? Player.Black : Player.White);
 			EvaluationVariable childEval = minimax(clonedBoard, depth - 1, !isMaximizingPlayer, nextPlayer);
 			childEval.coords = move;
-			System.out.println(tabString + depth + ": " + childEval.coords + " : " + childEval.evaluationScore);
+//			System.out.println(tabString + depth + ": " + childEval.coords + " : " + childEval.evaluationScore);
 
 			if (isMaximizingPlayer)
 			{
 				if (childEval.evaluationScore > bestEval)
 				{
-					System.out.println("New maximised best board");
+					System.out.println("New maximised best board : " + childEval.evaluationScore);
 					clonedBoard.print();
 					bestEval = childEval.evaluationScore;
-					bestCoords = childEval.coords;
+					bestMoves.clear();
+					bestMoves.add(move);
+				}
+				else if (childEval.evaluationScore == bestEval)
+				{
+					bestMoves.add(move);
 				}
 			}
 			else
 			{
+				System.out.println(Math.min(childEval.evaluationScore, bestEval));
+
+				if (childEval.evaluationScore == -4)
+				{
+					System.out.println("TROUVÉE SOLUTION");
+				}
+
 				if (childEval.evaluationScore < bestEval)
 				{
-					System.out.println("New minimised best board");
+					System.out.println("New minimised best board : " + childEval.evaluationScore);
 					clonedBoard.print();
 					bestEval = childEval.evaluationScore;
 					bestCoords = childEval.coords;
 				}
 			}
+			System.out.println(depth + " : " +  move + " : evaluation retenue : " + bestEval);
 		}
-
 		return new EvaluationVariable(bestCoords, bestEval);
 	}
 
-	public int minimaxEval(GomokuBoard board, Player player)
+	public int minimaxEval(GomokuBoard board)
 	{
-		return evaluateBoard(board, player);
+		return evaluateBoard(board);
 	}
 }
