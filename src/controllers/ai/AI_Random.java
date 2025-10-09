@@ -243,20 +243,20 @@ public class AI_Random extends PlayerController
 	@Override
 	public Coords play(GomokuBoard board, Player player)
 	{
-		return minimax(board, this.minimaxDepth, true, playerColor).coords;
+		return minimax(board, this.minimaxDepth, false, playerColor).coords;
 	}
 
 	public EvaluationVariable minimax(GomokuBoard board, int depth, boolean isMaximizingPlayer, Player player)
 	{
-		if (getAvailableMoves(board).length == 224)
+		if (getAvailableMoves(board).length >= 224)
 		{
-			if (board.areCoordsValid(6, 6))
+			if (board.get(6,6).equals(TileState.Empty))
 			{
 				return new EvaluationVariable(new Coords(6, 6), Integer.MAX_VALUE);
 			}
 			else
 			{
-				return new EvaluationVariable(new Coords(5, 6), Integer.MAX_VALUE);
+				return new EvaluationVariable(new Coords(7, 7), Integer.MAX_VALUE);
 			}
 		}
 		// Profondeur 0 atteinte
@@ -270,24 +270,22 @@ public class AI_Random extends PlayerController
 		int bestEval = isMaximizingPlayer ? Integer.MIN_VALUE : Integer.MAX_VALUE;
 		ArrayList<Coords> bestMoves = new ArrayList<Coords>();
 
-//		System.out.println("-------------------------------------- new move --------------------------------------");
-//		board.print();
-
 		for (Coords move : moves)
 		{
 			GomokuBoard clonedBoard = board.clone();
 			clonedBoard.set(move, player == Player.White ? TileState.White : TileState.Black);
-			int depthForString = 0;
-			String tabString = "";
-			while (depthForString != depth)
-			{
-				tabString += "   ";
-				depthForString++;
-			}
 
 			Player nextPlayer = (player == Player.White ? Player.Black : Player.White);
 			EvaluationVariable childEval = minimax(clonedBoard, depth - 1, !isMaximizingPlayer, nextPlayer);
 			childEval.coords = move;
+
+//			int depthForString = 0;
+//			String tabString = "";
+//			while (depthForString != depth)
+//			{
+//				tabString += "   ";
+//				depthForString++;
+//			}
 //			System.out.println(tabString + depth + ": " + childEval.coords + " : " + childEval.evaluationScore);
 
 			if (isMaximizingPlayer)
@@ -307,13 +305,6 @@ public class AI_Random extends PlayerController
 			}
 			else
 			{
-				System.out.println(Math.min(childEval.evaluationScore, bestEval));
-
-				if (childEval.evaluationScore == -4)
-				{
-					System.out.println("TROUVÉE SOLUTION");
-				}
-
 				if (childEval.evaluationScore < bestEval)
 				{
 					System.out.println("New minimised best board : " + childEval.evaluationScore);

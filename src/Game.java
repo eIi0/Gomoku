@@ -88,7 +88,7 @@ public class Game
 	public static void main(String[] args)
 	{
 		GomokuBoard board = new GomokuBoard();
-		System.out.println("Selection du mode de jeu : \n- Humain VS Humain (1) \n- Humain VS IA (2) \n-IA VS IA (3)");
+		System.out.println("Selection du mode de jeu : \n- Humain VS Humain (1) \n- Humain VS IA (2) \n- IA VS Humain (3) \n- IA VS IA (4)");
 
 //		Test du plateau
 //		board.set(1,1,TileState.White);
@@ -118,16 +118,23 @@ public class Game
 			case 2:
 				System.out.println("Profondeur calcul IA : ");
 				int depthIA = sc.nextInt();
-				startMatch(board, new HumanPlayer(), new AI_Random(depthIA, board, Player.Black)); // Lancer une partie entre un joueur humain et une IA Sweep
+				startMatch(board, new HumanPlayer(), new AI_Random(depthIA, board, Player.Black));
 
 				break;
 
 			case 3:
+				System.out.println("Profondeur calcul IA : ");
+				int depthIA2 = sc.nextInt();
+				startMatch(board, new AI_Random(depthIA2, board, Player.Black), new HumanPlayer());
+
+				break;
+
+			case 4:
 				System.out.println("Profondeur calcul IA blanche: ");
 				int depthIAWhite = sc.nextInt();
 				System.out.println("Profondeur calcul IA noire: ");
 				int depthIABlack = sc.nextInt();
-				startMatch(board, new AI_Random(depthIAWhite, board, Player.White), new AI_Random(depthIABlack, board, Player.Black)); // Lancer une partie entre un joueur humain et une IA Sweep
+				startMatch(board, new AI_Random(depthIAWhite, board, Player.White), new AI_Random(depthIABlack, board, Player.Black));
 				break;
 		}
 //            startMatch(new AI_Sweep(2), new AI_Sweep(2)); // Lancer une partie entre deux IA Sweep
