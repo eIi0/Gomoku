@@ -55,7 +55,7 @@ public class AI_Elagage extends PlayerController
 
 		if (getAvailableMoves(board).length >= 224)
 		{
-			if (board.get(6,6).equals(TileState.Empty))
+			if (board.get(6, 6).equals(TileState.Empty))
 			{
 				return new EvaluationVariable(new Coords(6, 6), Integer.MAX_VALUE);
 			}
@@ -147,7 +147,6 @@ public class AI_Elagage extends PlayerController
 
 	public Coords play(GomokuBoard board, Player player)
 	{
-		// reset stats
 		nodesVisited = 0;
 		nodesPruned = 0;
 
