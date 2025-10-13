@@ -30,18 +30,14 @@ public class AI_Random extends PlayerController
 
 	}
 
+
 	public int evaluateBoard(GomokuBoard board) {
-		int size = GomokuBoard.size;
+		int[][] directions = {{0, 1}, {1, 0}, {1, 1}, {1, -1}};
 		int score = 0;
 
-		int[][] directions = {{0, 1}, {1, 0}, {1, 1}, {1, -1}};
-
-		// Évaluation des lignes
+		// Score pour chaque joueur
 		score += evaluateLines(board, TileState.White, directions);
 		score -= evaluateLines(board, TileState.Black, directions);
-
-		score += evaluateShapes(board, TileState.White);
-		score -= evaluateShapes(board, TileState.Black);
 
 		return score;
 	}
@@ -50,6 +46,10 @@ public class AI_Random extends PlayerController
 		int score = 0;
 		int size = GomokuBoard.size;
 		int center = size / 2;
+
+		// Définir le carré central 5x5
+		int centerStart = center - 2; // start=5 pour size=15
+		int centerEnd = center + 2;   // end=9 pour size=15
 
 		for (int row = 0; row < size; row++) {
 			for (int col = 0; col < size; col++) {
@@ -63,7 +63,7 @@ public class AI_Random extends PlayerController
 						c += dir[1];
 					}
 
-					if (count > 1) {
+					if (count > 0) {
 						boolean open1 = false, open2 = false;
 
 						int beforeR = row - dir[0], beforeC = col - dir[1];
@@ -78,17 +78,25 @@ public class AI_Random extends PlayerController
 							open2 = true;
 						}
 
-						if (!open1 && !open2) continue;
+						if (!open1 && !open2 && count < 5) continue;
 
-						int baseScore = 0;
-						if (count >= 5) return Integer.MAX_VALUE;
-						else if (count == 4) baseScore = (open1 && open2) ? 10000 : 1000;
-						else if (count == 3) baseScore = (open1 && open2) ? 100 : 30;
-						else if (count == 2) baseScore = (open1 && open2) ? 5 : 2;
+						// Attribution du score selon la longueur de la ligne
+						int baseScore = switch (count) {
+							case 5 -> Integer.MAX_VALUE; // victoire
+							case 4 -> (open1 && open2) ? 10000 : 5000;
+							case 3 -> (open1 && open2) ? 500 : 100;
+							case 2 -> (open1 && open2) ? 50 : 10;
+							default -> 1; // 1 pion seul
+						};
 
-						//  Bonus de centralité
-						int distanceToCenter = Math.abs(row - center) + Math.abs(col - center);
-						int centralityBonus = Math.max(0, 10 - distanceToCenter); // max bonus = 10, diminue avec l’éloignement
+						// Bonus centralité avec carré 5x5
+						int centralityBonus;
+						if (row >= centerStart && row <= centerEnd && col >= centerStart && col <= centerEnd) {
+							centralityBonus = 10; // carré central
+						} else {
+							int distance = Math.max(Math.abs(row - center), Math.abs(col - center));
+							centralityBonus = Math.max(0, 10 - distance); // décroissance rapide
+						}
 
 						score += baseScore + centralityBonus;
 					}
@@ -97,6 +105,8 @@ public class AI_Random extends PlayerController
 		}
 		return score;
 	}
+
+
 
 
 	private int evaluateShapes(GomokuBoard board, TileState tile) {
@@ -253,82 +263,114 @@ public class AI_Random extends PlayerController
 	}
 
 	@Override
-	public Coords play(GomokuBoard board, Player player)
-	{
-		return minimax(board, this.minimaxDepth, /*false, (pas sur que ce qui est après soit optimal FIXME*/(playerColor == Player.White) ? true : false, playerColor).coords;
+	public Coords play(GomokuBoard board, Player player) {
+		TileState myTile = (playerColor == Player.White) ? TileState.White : TileState.Black;
+		TileState opponentTile = (playerColor == Player.White) ? TileState.Black : TileState.White;
+		Coords[] moves = getAvailableMoves(board);
+
+		// 1️⃣ Cherche une victoire immédiate pour moi
+		for (Coords move : moves) {
+			GomokuBoard clone = board.clone();
+			clone.set(move, myTile);
+			if (clone.getWinnerState().name().equalsIgnoreCase(playerColor.name())) {
+				return move; // victoire directe
+			}
+		}
+
+		// 2️⃣ Cherche un coup pour bloquer la victoire immédiate de l’adversaire
+		for (Coords move : moves) {
+			GomokuBoard clone = board.clone();
+			clone.set(move, opponentTile);
+			if (clone.getWinnerState().name().equalsIgnoreCase(
+					(playerColor == Player.White) ? "Black" : "White")) {
+				return move; // bloque l’adversaire
+			}
+		}
+
+		// 3️⃣ Sinon, utilise le minimax habituel
+		return minimax(board, this.minimaxDepth, playerColor == Player.White, playerColor).coords;
 	}
+
 
 	public EvaluationVariable minimax(GomokuBoard board, int depth, boolean isMaximizingPlayer, Player player)
 	{
 		if (getAvailableMoves(board).length >= 224)
 		{
-			if (board.get(6,6).equals(TileState.Empty))
-			{
+			if (board.get(6, 6).equals(TileState.Empty))
 				return new EvaluationVariable(new Coords(6, 6), Integer.MAX_VALUE);
-			}
 			else
-			{
 				return new EvaluationVariable(new Coords(7, 7), Integer.MAX_VALUE);
-			}
-		}
-		// Profondeur 0 atteinte
-		if (depth == 0)
-		{
-			return new EvaluationVariable(new Coords(), minimaxEval(board));
 		}
 
+		if (depth == 0)
+			return new EvaluationVariable(new Coords(), minimaxEval(board));
+
 		Coords[] moves = getAvailableMoves(board);
-		Coords bestCoords = moves[(0)];       //TODO a modifier par mieux --> problème pas de la
+		Coords bestCoords = moves[0];
 		int bestEval = isMaximizingPlayer ? Integer.MIN_VALUE : Integer.MAX_VALUE;
-		ArrayList<Coords> bestMoves = new ArrayList<Coords>();
 
 		for (Coords move : moves)
 		{
 			GomokuBoard clonedBoard = board.clone();
-			clonedBoard.set(move, player == Player.White ? TileState.White : TileState.Black);
+			TileState myTile = (player == Player.White) ? TileState.White : TileState.Black;
+			TileState opponentTile = (player == Player.White) ? TileState.Black : TileState.White;
 
-			Player nextPlayer = (player == Player.White ? Player.Black : Player.White);
+			clonedBoard.set(move, myTile);
+
+			// ✅ Victoire immédiate
+			if (clonedBoard.getWinnerState().name().equalsIgnoreCase(player.name()))
+			{
+				return new EvaluationVariable(move, Integer.MAX_VALUE);
+			}
+
+			// ⚠️ Vérifie si ce coup laisse une victoire immédiate à l’adversaire
+			boolean givesImmediateLoss = false;
+			for (Coords oppMove : getAvailableMoves(clonedBoard))
+			{
+				clonedBoard.set(oppMove, opponentTile);
+				if (clonedBoard.getWinnerState().name().equalsIgnoreCase(
+						(player == Player.White) ? "Black" : "White"))
+				{
+					givesImmediateLoss = true;
+					clonedBoard.set(oppMove, TileState.Empty);
+					break;
+				}
+				clonedBoard.set(oppMove, TileState.Empty);
+			}
+
+			// ⛔ On n'arrête pas la boucle ici ! On pénalise juste le score
+			int evalPenalty = givesImmediateLoss ? -100000 : 0;
+
+			// 🔁 Exploration plus profonde
+			Player nextPlayer = (player == Player.White) ? Player.Black : Player.White;
 			EvaluationVariable childEval = minimax(clonedBoard, depth - 1, !isMaximizingPlayer, nextPlayer);
 			childEval.coords = move;
 
-//			int depthForString = 0;
-//			String tabString = "";
-//			while (depthForString != depth)
-//			{
-//				tabString += "   ";
-//				depthForString++;
-//			}
-//			System.out.println(tabString + depth + ": " + childEval.coords + " : " + childEval.evaluationScore);
+			int finalEval = childEval.evaluationScore + evalPenalty;
 
+			// 🔍 Mise à jour du meilleur score
 			if (isMaximizingPlayer)
 			{
-				if (childEval.evaluationScore > bestEval)
+				if (finalEval > bestEval)
 				{
-//					System.out.println("New maximised best board : " + childEval.evaluationScore);
-//					clonedBoard.print();
-					bestEval = childEval.evaluationScore;
-					bestMoves.clear();
-					bestMoves.add(move);
-				}
-				else if (childEval.evaluationScore == bestEval)
-				{
-					bestMoves.add(move);
+					bestEval = finalEval;
+					bestCoords = move;
 				}
 			}
 			else
 			{
-				if (childEval.evaluationScore < bestEval)
+				if (finalEval < bestEval)
 				{
-//					System.out.println("New minimised best board : " + childEval.evaluationScore);
-//					clonedBoard.print();
-					bestEval = childEval.evaluationScore;
-					bestCoords = childEval.coords;
+					bestEval = finalEval;
+					bestCoords = move;
 				}
 			}
-//			System.out.println(depth + " : " +  move + " : evaluation retenue : " + bestEval);
 		}
+
 		return new EvaluationVariable(bestCoords, bestEval);
 	}
+
+
 
 	public int minimaxEval(GomokuBoard board)
 	{
