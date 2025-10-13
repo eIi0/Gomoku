@@ -40,9 +40,8 @@ public class AI_Random extends PlayerController
 		score += evaluateLines(board, TileState.White, directions);
 		score -= evaluateLines(board, TileState.Black, directions);
 
-		// Formes en X avec bonus progressif
-		score += detectXShapeWithOpenSidesBonus(board, TileState.White);
-		score -= detectXShapeWithOpenSidesBonus(board, TileState.Black);
+		score += evaluateShapes(board, TileState.White);
+		score -= evaluateShapes(board, TileState.Black);
 
 		return score;
 	}
@@ -50,6 +49,7 @@ public class AI_Random extends PlayerController
 	private int evaluateLines(GomokuBoard board, TileState tile, int[][] directions) {
 		int score = 0;
 		int size = GomokuBoard.size;
+		int center = size / 2;
 
 		for (int row = 0; row < size; row++) {
 			for (int col = 0; col < size; col++) {
@@ -80,108 +80,156 @@ public class AI_Random extends PlayerController
 
 						if (!open1 && !open2) continue;
 
-						boolean open = open1 && open2;
-
+						int baseScore = 0;
 						if (count >= 5) return Integer.MAX_VALUE;
-						else if (count == 4) score += open ? 10000 : 1000;
-						else if (count == 3) score += open ? 100 : 10;
-						else if (count == 2) score += open ? 5 : 1;
+						else if (count == 4) baseScore = (open1 && open2) ? 10000 : 1000;
+						else if (count == 3) baseScore = (open1 && open2) ? 100 : 30;
+						else if (count == 2) baseScore = (open1 && open2) ? 5 : 2;
+
+						//  Bonus de centralité
+						int distanceToCenter = Math.abs(row - center) + Math.abs(col - center);
+						int centralityBonus = Math.max(0, 10 - distanceToCenter); // max bonus = 10, diminue avec l’éloignement
+
+						score += baseScore + centralityBonus;
 					}
 				}
 			}
 		}
-
 		return score;
 	}
 
-	private int detectXShapeWithOpenSidesBonus(GomokuBoard board, TileState playerTile) {
+
+	private int evaluateShapes(GomokuBoard board, TileState tile) {
 		int score = 0;
 		int size = GomokuBoard.size;
+		int center = size / 2;
+
+		int[][] directions = {
+				{0, 1},   // ➡️
+				{1, 0},   // ⬇️
+				{1, 1},   // ↘
+				{1, -1}   // ↙
+		};
 
 		for (int row = 1; row < size - 1; row++) {
 			for (int col = 1; col < size - 1; col++) {
-				Coords center = new Coords(row, col);
-				if (board.get(center) != TileState.Empty) continue;
+				Coords centerCoord = new Coords(row, col);
+				if (board.get(centerCoord) != TileState.Empty) continue;
 
+				// 🔹 Diagonales (X)
 				Coords[] diagonals = {
 						new Coords(row - 1, col - 1),
 						new Coords(row - 1, col + 1),
 						new Coords(row + 1, col - 1),
 						new Coords(row + 1, col + 1)
 				};
-
 				boolean isX = true;
 				for (Coords d : diagonals) {
-					if (board.get(d) != playerTile) {
+					if (board.get(d) != tile) {
 						isX = false;
 						break;
 					}
 				}
 
-				if (!isX) continue;
-
+				// 🔹 Côtés (+)
 				Coords[] sides = {
 						new Coords(row - 1, col),
 						new Coords(row + 1, col),
 						new Coords(row, col - 1),
 						new Coords(row, col + 1)
 				};
+				boolean isPlus = true;
+				for (Coords s : sides) {
+					if (board.get(s) != tile) {
+						isPlus = false;
+						break;
+					}
+				}
 
+				// 🔸 Côtés ouverts
 				int openSides = 0;
 				for (Coords s : sides) {
 					if (board.get(s) == TileState.Empty) {
 						openSides++;
 					}
 				}
+				if (openSides == 0) continue;
 
-				score += 25 + (openSides * 15);
-			}
-		}
+				// 🔸 Bonus centralité
+				int distanceToCenter = Math.abs(row - center) + Math.abs(col - center);
+				int centralityBonus = Math.max(0, 10 - distanceToCenter);
 
-		return score;
-	}
+				// 🔸 Score selon forme
+				int baseShapeScore = 0;
+				if (isX && isPlus) baseShapeScore = 100 + (openSides * 10);
+				else if (isX) baseShapeScore = switch (openSides) {
+					case 1 -> 20;
+					case 2 -> 40;
+					case 3 -> 60;
+					default -> 70;
+				};
+				else if (isPlus) baseShapeScore = switch (openSides) {
+					case 1 -> 15;
+					case 2 -> 35;
+					case 3 -> 55;
+					default -> 60;
+				};
 
-	private int detectExtendedPlusShape(GomokuBoard board, TileState playerTile)
-	{
-		int score = 0;
-		int size = GomokuBoard.size;
-
-		for (int row = 2; row < size - 2; row++)
-		{
-			for (int col = 2; col < size - 2; col++)
-			{
-				Coords center = new Coords(row, col);
-				if (board.get(center) == TileState.Empty)
-				{
-					// Adjacent orthogonaux
-					Coords[] adjacents = {
-							new Coords(row - 1, col),
-							new Coords(row + 1, col),
-							new Coords(row, col - 1),
-							new Coords(row, col + 1)
-					};
-					boolean isPlus = true;
-					for (Coords a : adjacents)
-					{
-						if (board.get(a) != playerTile)
-						{
-							isPlus = false;
-							break;
-						}
-					}
-					// Extension verticale
-					boolean verticalExtend = board.get(new Coords(row - 2, col)) == playerTile
-							&& board.get(new Coords(row + 2, col)) == playerTile;
-					// Extension horizontale
-					boolean horizontalExtend = board.get(new Coords(row, col - 2)) == playerTile
-							&& board.get(new Coords(row, col + 2)) == playerTile;
-					if (isPlus && (verticalExtend || horizontalExtend))
-					{
-						score += 100;
+				// 🔹 T
+				boolean isT = false;
+				for (int i = 0; i < 4; i++) {
+					Coords arm1 = sides[i];
+					Coords arm2 = sides[(i + 1) % 4];
+					Coords arm3 = sides[(i + 3) % 4];
+					if (board.get(arm1) == tile && board.get(arm2) == tile && board.get(arm3) == tile) {
+						isT = true;
+						break;
 					}
 				}
+				if (isT) baseShapeScore += switch (openSides) {
+					case 1 -> 20;
+					case 2 -> 40;
+					case 3 -> 60;
+					default -> 70;
+				};
+
+				// 🔹 L
+				boolean isL = false;
+				Coords[][] lShapes = {
+						{sides[0], sides[2]}, {sides[0], sides[3]},
+						{sides[1], sides[2]}, {sides[1], sides[3]}
+				};
+				for (Coords[] pair : lShapes) {
+					if (board.get(pair[0]) == tile && board.get(pair[1]) == tile) {
+						isL = true;
+						break;
+					}
+				}
+				if (isL) baseShapeScore += switch (openSides) {
+					case 1 -> 10;
+					case 2 -> 25;
+					case 3 -> 40;
+					default -> 50;
+				};
+
+				// 🔍 Analyse locale : lignes partant du centre
+				int localThreatBonus = 0;
+				for (int[] dir : directions) {
+					int r = row + dir[0], c = col + dir[1];
+					int count = 0;
+					while (r >= 0 && r < size && c >= 0 && c < size && board.get(new Coords(r, c)) == tile) {
+						count++;
+						r += dir[0];
+						c += dir[1];
+					}
+					if (count == 2) localThreatBonus += 10;
+					else if (count == 3) localThreatBonus += 30;
+				}
+
+				score += baseShapeScore + centralityBonus + localThreatBonus;
 			}
 		}
+
 		return score;
 	}
 
