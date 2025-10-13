@@ -104,11 +104,6 @@ public class Game
 //		board.set(2,4,TileState.Black);
 //		board.set(2,5,TileState.Black);
 
-		System.out.println(evaluateBoard(board));
-		board.print();
-		System.out.println();
-
-
 		Scanner sc = new Scanner(System.in);
 		int str = sc.nextInt();
 		switch (str)
@@ -164,112 +159,5 @@ public class Game
 //            startMatch(new AI_Sweep(2), new AI_Sweep(2)); // Lancer une partie entre deux IA Sweep
 //        startMatch(new AI_Star(3), new AI_Star(3)); // Lancer une partie entre deux IA Star
 		//startMatch(new AI_Star(2), new AI_Sweep(2)); // Lancer une partie entre une IA Sweep et une IA Star
-	}
-
-
-	public static int evaluateBoard(GomokuBoard board)
-	{
-		GomokuBoard evaluationBoard = board.clone();
-		int evaluation = 0;
-		int size = GomokuBoard.size;
-		TileState whiteTileState = TileState.White;
-		TileState blackTileState = TileState.Black;
-
-		// Directions : droite, bas, diagonale droite-bas, diagonale gauche-bas
-		int[][] directions = {{0, 1}, {1, 0}, {1, 1}, {1, -1}};
-
-		for (int row = 0; row < size; row++)
-		{
-			for (int col = 0; col < size; col++)
-			{
-				for (int[] dir : directions)
-				{
-					int count = 0;
-					int r = row, c = col;
-
-					while (r >= 0 && r < size && c >= 0 && c < size && evaluationBoard.get(new Coords(r, c)) == whiteTileState)
-					{
-						count++;
-						r += dir[0];
-						c += dir[1];
-					}
-
-					if (count > 1)
-					{
-						boolean open1 = false, open2 = false;
-
-						int beforeR = row - dir[0], beforeC = col - dir[1];
-						if (beforeR >= 0 && beforeR < size && beforeC >= 0 && beforeC < size &&
-								evaluationBoard.get(new Coords(beforeR, beforeC)) == TileState.Empty)
-						{
-							open1 = true;
-						}
-						int afterR = row + count * dir[0], afterC = col + count * dir[1];
-						if (afterR >= 0 && afterR < size && afterC >= 0 && afterC < size &&
-								evaluationBoard.get(new Coords(afterR, afterC)) == TileState.Empty)
-						{
-							open2 = true;
-						}
-
-						boolean open = open1 && open2;
-						if (count >= 5) return Integer.MAX_VALUE;
-						else if (count == 4) evaluation += open ? 10000 : 500;
-						else if (count == 3) evaluation += open ? 100 : 50;
-						else if (count == 2) evaluation += open ? 5 : 1;
-					}
-				}
-			}
-		}
-
-		for (int row = 0; row < size; row++)
-		{
-			for (int col = 0; col < size; col++)
-			{
-				for (int[] dir : directions)
-				{
-					int count = 0;
-					int r = row, c = col;
-
-					while (r >= 0 && r < size && c >= 0 && c < size && evaluationBoard.get(new Coords(r, c)) == blackTileState)
-					{
-						count++;
-						r += dir[0];
-						c += dir[1];
-					}
-
-					if (count > 1)
-					{
-						boolean open1 = false, open2 = false;
-						int beforeR = row - dir[0], beforeC = col - dir[1];
-						if (beforeR >= 0 && beforeR < size && beforeC >= 0 && beforeC < size &&
-								evaluationBoard.get(new Coords(beforeR, beforeC)) == TileState.Empty)
-						{
-							open1 = true;
-						}
-						int afterR = row + count * dir[0], afterC = col + count * dir[1];
-						if (afterR >= 0 && afterR < size && afterC >= 0 && afterC < size &&
-								evaluationBoard.get(new Coords(afterR, afterC)) == TileState.Empty)
-						{
-							open2 = true;
-						}
-						boolean open = open1 && open2;
-
-						if (count >= 5) return Integer.MIN_VALUE;
-						else if (count == 4) evaluation -= open ? 10000 : 500;
-						else if (count == 3) evaluation -= open ? 100 : 50;
-						else if (count == 2) evaluation -= open ? 5 : 1;
-
-					}
-				}
-			}
-		}
-//		evaluation += detectExtendedXShape(evaluationBoard, whiteTileState);
-//		evaluation -= detectExtendedXShape(evaluationBoard, blackTileState);
-//		evaluation += detectExtendedPlusShape(evaluationBoard, whiteTileState);
-//		evaluation -= detectExtendedPlusShape(evaluationBoard, blackTileState);
-
-		//TODO ajouter la méthode pour les shapes speciales de l'adversaire
-
-		return evaluation;
 	}
 }
