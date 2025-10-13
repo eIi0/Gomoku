@@ -1,5 +1,6 @@
 package controllers.ai;
 
+import controllers.PlayerController;
 import gamecore.Coords;
 import gamecore.GomokuBoard;
 import gamecore.enums.Player;
@@ -9,20 +10,23 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
-public class AI_Elagage {
+public class AI_Elagage extends PlayerController
+{
 
 	private final Random rnd = new Random();
 	private long nodesVisited = 0;
 	private long nodesPruned = 0;
-	private  int minimaxDepth;
+	private int minimaxDepth;
 	private Player playerColor;
 
-	public AI_Elagage(int minimaxDepth, GomokuBoard board, Player playerColor) {
+	public AI_Elagage(int minimaxDepth, Player playerColor)
+	{
 		this.minimaxDepth = minimaxDepth;
 		this.playerColor = playerColor;
 	}
 
-	public AI_Elagage() {
+	public AI_Elagage()
+	{
 		super();
 	}
 
@@ -45,20 +49,24 @@ public class AI_Elagage {
 		return moves.toArray(new Coords[0]);
 	}
 
-	/**
-	 * Minimax avec élagage alpha-beta.
-	 * @param board plateau courant
-	 * @param depth profondeur restante
-	 * @param isMaximizingPlayer true si nœud maximisant
-	 * @param player joueur devant jouer dans ce nœud
-	 * @param alpha borne alpha
-	 * @param beta borne beta
-	 * @return EvaluationVariable contenant coords (meilleur coup) et evaluationScore
-	 */
-	public EvaluationVariable minimaxAlphaBeta(GomokuBoard board, int depth, boolean isMaximizingPlayer, Player player, int alpha, int beta) {
+	public EvaluationVariable minimaxAlphaBeta(GomokuBoard board, int depth, boolean isMaximizingPlayer, Player player, int alpha, int beta)
+	{
 		nodesVisited++;
 
-		if (depth == 0) {
+		if (getAvailableMoves(board).length >= 224)
+		{
+			if (board.get(6, 6).equals(TileState.Empty))
+			{
+				return new EvaluationVariable(new Coords(6, 6), Integer.MAX_VALUE);
+			}
+			else
+			{
+				return new EvaluationVariable(new Coords(7, 7), Integer.MAX_VALUE);
+			}
+		}
+
+		if (depth == 0)
+		{
 			int eval = minimaxEvalRoot(board);
 			return new EvaluationVariable(new Coords(), eval);
 		}
@@ -67,7 +75,8 @@ public class AI_Elagage {
 		List<Coords> bestMoves = new ArrayList<>();
 		int bestEval = isMaximizingPlayer ? Integer.MIN_VALUE : Integer.MAX_VALUE;
 
-		for (int i = 0; i < moves.length; i++) {
+		for (int i = 0; i < moves.length; i++)
+		{
 			Coords move = moves[i];
 
 			GomokuBoard clonedBoard = board.clone();
@@ -78,66 +87,74 @@ public class AI_Elagage {
 			EvaluationVariable childEval = minimaxAlphaBeta(clonedBoard, depth - 1, !isMaximizingPlayer, nextPlayer, alpha, beta);
 			int childScore = childEval.evaluationScore;
 
-			if (isMaximizingPlayer) {
-				if (childScore > bestEval) {
+			if (isMaximizingPlayer)
+			{
+				if (childScore > bestEval)
+				{
 					bestEval = childScore;
 					bestMoves.clear();
 					bestMoves.add(move);
-				} else if (childScore == bestEval) {
+				}
+				else if (childScore == bestEval)
+				{
 					bestMoves.add(move);
 				}
 
 				// mettre à jour alpha et tester la coupe
 				alpha = Math.max(alpha, bestEval);
-				if (alpha >= beta) {
-					// coupe possible : on arrête d'explorer les autres fils
-					// Estimation : on coupe le reste de la liste des moves
+				if (alpha >= beta)
+				{
 					nodesPruned += (moves.length - i - 1);
 					break;
 				}
-			} else { // minimizing node
-				if (childScore < bestEval) {
+			}
+			else
+			{ // minimizing node
+				if (childScore < bestEval)
+				{
 					bestEval = childScore;
 					bestMoves.clear();
 					bestMoves.add(move);
-				} else if (childScore == bestEval) {
+				}
+				else if (childScore == bestEval)
+				{
 					bestMoves.add(move);
 				}
 
 				// mettre à jour beta et tester la coupe
 				beta = Math.min(beta, bestEval);
-				if (beta <= alpha) {
+				if (beta <= alpha)
+				{
 					nodesPruned += (moves.length - i - 1);
 					break;
 				}
 			}
 		}
 
-		// Choisir un coup parmi les meilleurs (random pour casser la répétition)
 		Coords chosen = bestMoves.get(0);
-		if (bestMoves.size() > 1) {
+		if (bestMoves.size() > 1)
+		{
 			chosen = bestMoves.get(rnd.nextInt(bestMoves.size()));
 		}
 
 		return new EvaluationVariable(chosen, bestEval);
 	}
 
-	public int minimaxEvalRoot(GomokuBoard board) {
+	public int minimaxEvalRoot(GomokuBoard board)
+	{
 		return evaluateBoard(board);
 	}
 
-	public Coords play(GomokuBoard board, Player player) {
-		// reset stats
+	public Coords play(GomokuBoard board, Player player)
+	{
 		nodesVisited = 0;
 		nodesPruned = 0;
 
-		EvaluationVariable meilleurCoup = minimaxAlphaBeta(board, this.minimaxDepth, true, this.playerColor, Integer.MIN_VALUE, Integer.MAX_VALUE);
+		EvaluationVariable meilleurCoup = minimaxAlphaBeta(board, this.minimaxDepth, false, this.playerColor, Integer.MIN_VALUE, Integer.MAX_VALUE);
 		System.out.println("AI_Elagage depth=" + this.minimaxDepth + " nodesVisited=" + nodesVisited + " nodesPruned=" + nodesPruned + " chosen=" + meilleurCoup.coords + " score=" + meilleurCoup.evaluationScore);
 
 		return meilleurCoup.coords;
 	}
-
-
 
 
 	//TODO mettre a jour avec Malak

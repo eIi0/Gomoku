@@ -18,7 +18,7 @@ public class AI_Random extends PlayerController
 	private int minimaxDepth;
 	private Player playerColor;
 
-	public AI_Random(int minimaxDepth, GomokuBoard board, Player playerColor)
+	public AI_Random(int minimaxDepth, Player playerColor)
 	{
 		this.minimaxDepth = minimaxDepth;
 		this.playerColor = playerColor;
@@ -255,7 +255,7 @@ public class AI_Random extends PlayerController
 	@Override
 	public Coords play(GomokuBoard board, Player player)
 	{
-		return minimax(board, this.minimaxDepth, false, playerColor).coords;
+		return minimax(board, this.minimaxDepth, /*false, (pas sur que ce qui est après soit optimal FIXME*/(playerColor == Player.White) ? true : false, playerColor).coords;
 	}
 
 	public EvaluationVariable minimax(GomokuBoard board, int depth, boolean isMaximizingPlayer, Player player)
@@ -304,8 +304,8 @@ public class AI_Random extends PlayerController
 			{
 				if (childEval.evaluationScore > bestEval)
 				{
-					System.out.println("New maximised best board : " + childEval.evaluationScore);
-					clonedBoard.print();
+//					System.out.println("New maximised best board : " + childEval.evaluationScore);
+//					clonedBoard.print();
 					bestEval = childEval.evaluationScore;
 					bestMoves.clear();
 					bestMoves.add(move);
@@ -319,13 +319,13 @@ public class AI_Random extends PlayerController
 			{
 				if (childEval.evaluationScore < bestEval)
 				{
-					System.out.println("New minimised best board : " + childEval.evaluationScore);
-					clonedBoard.print();
+//					System.out.println("New minimised best board : " + childEval.evaluationScore);
+//					clonedBoard.print();
 					bestEval = childEval.evaluationScore;
 					bestCoords = childEval.coords;
 				}
 			}
-			System.out.println(depth + " : " +  move + " : evaluation retenue : " + bestEval);
+//			System.out.println(depth + " : " +  move + " : evaluation retenue : " + bestEval);
 		}
 		return new EvaluationVariable(bestCoords, bestEval);
 	}
