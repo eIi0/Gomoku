@@ -109,7 +109,7 @@ public class AI_Elagage extends PlayerController
 				}
 			}
 			else
-			{ // minimizing node
+			{
 				if (childScore < bestEval)
 				{
 					bestEval = childScore;
@@ -150,118 +150,84 @@ public class AI_Elagage extends PlayerController
 		nodesVisited = 0;
 		nodesPruned = 0;
 
-		EvaluationVariable meilleurCoup = minimaxAlphaBeta(board, this.minimaxDepth, false, this.playerColor, Integer.MIN_VALUE, Integer.MAX_VALUE);
+		EvaluationVariable meilleurCoup = minimaxAlphaBeta(board, this.minimaxDepth, true, this.playerColor, Integer.MIN_VALUE, Integer.MAX_VALUE);
 		System.out.println("AI_Elagage depth=" + this.minimaxDepth + " nodesVisited=" + nodesVisited + " nodesPruned=" + nodesPruned + " chosen=" + meilleurCoup.coords + " score=" + meilleurCoup.evaluationScore);
 
 		return meilleurCoup.coords;
 	}
 
 
-	//TODO mettre a jour avec Malak
-	public int evaluateBoard(GomokuBoard board)
-	{
-		GomokuBoard evaluationBoard = board.clone();
-		int evaluation = 0;
-		int size = GomokuBoard.size;
-		TileState whiteTileState = TileState.White;
-		TileState blackTileState = TileState.Black;
-
-		// Directions : droite, bas, diagonale droite-bas, diagonale gauche-bas
+	public int evaluateBoard(GomokuBoard board) {
 		int[][] directions = {{0, 1}, {1, 0}, {1, 1}, {1, -1}};
+		int score = 0;
 
-		for (int row = 0; row < size; row++)
-		{
-			for (int col = 0; col < size; col++)
-			{
-				for (int[] dir : directions)
-				{
-					int count = 0;
-					int r = row, c = col;
+		// Score pour chaque joueur
+		score += evaluateLines(board, TileState.White, directions);
+		score -= evaluateLines(board, TileState.Black, directions);
 
-					while (r >= 0 && r < size && c >= 0 && c < size && evaluationBoard.get(new Coords(r, c)) == whiteTileState)
-					{
-						count++;
-						r += dir[0];
-						c += dir[1];
-					}
-
-					if (count > 1)
-					{
-						boolean open1 = false, open2 = false;
-
-						int beforeR = row - dir[0], beforeC = col - dir[1];
-						if (beforeR >= 0 && beforeR < size && beforeC >= 0 && beforeC < size &&
-								evaluationBoard.get(new Coords(beforeR, beforeC)) == TileState.Empty)
-						{
-							open1 = true;
-						}
-						int afterR = row + count * dir[0], afterC = col + count * dir[1];
-						if (afterR >= 0 && afterR < size && afterC >= 0 && afterC < size &&
-								evaluationBoard.get(new Coords(afterR, afterC)) == TileState.Empty)
-						{
-							open2 = true;
-						}
-
-						boolean open = open1 && open2;
-						if (count >= 5) return Integer.MAX_VALUE;
-						else if (count == 4) evaluation += open ? 10000 : 1000;
-						else if (count == 3) evaluation += open ? 100 : 10;
-						else if (count == 2) evaluation += open ? 5 : 1;
-					}
-				}
-			}
-		}
-
-		for (int row = 0; row < size; row++)
-		{
-			for (int col = 0; col < size; col++)
-			{
-				for (int[] dir : directions)
-				{
-					int count = 0;
-					int r = row, c = col;
-
-					while (r >= 0 && r < size && c >= 0 && c < size && evaluationBoard.get(new Coords(r, c)) == blackTileState)
-					{
-						count++;
-						r += dir[0];
-						c += dir[1];
-					}
-
-					if (count > 1)
-					{
-						boolean open1 = false, open2 = false;
-						int beforeR = row - dir[0], beforeC = col - dir[1];
-						if (beforeR >= 0 && beforeR < size && beforeC >= 0 && beforeC < size &&
-								evaluationBoard.get(new Coords(beforeR, beforeC)) == TileState.Empty)
-						{
-							open1 = true;
-						}
-						int afterR = row + count * dir[0], afterC = col + count * dir[1];
-						if (afterR >= 0 && afterR < size && afterC >= 0 && afterC < size &&
-								evaluationBoard.get(new Coords(afterR, afterC)) == TileState.Empty)
-						{
-							open2 = true;
-						}
-						boolean open = open1 && open2;
-
-						if (count >= 5) return Integer.MIN_VALUE;
-						else if (count == 4) evaluation -= open ? 10000 : 1000;
-						else if (count == 3) evaluation -= open ? 100 : 10;
-						else if (count == 2) evaluation -= open ? 5 : 1;
-
-					}
-				}
-			}
-		}
-//		evaluation += detectExtendedXShape(evaluationBoard, whiteTileState);
-//		evaluation -= detectExtendedXShape(evaluationBoard, blackTileState);
-//		evaluation += detectExtendedPlusShape(evaluationBoard, whiteTileState);
-//		evaluation -= detectExtendedPlusShape(evaluationBoard, blackTileState);
-
-		//TODO ajouter la méthode pour les shapes speciales de l'adversaire
-
-		return evaluation;
+		return score;
 	}
 
+	private int evaluateLines(GomokuBoard board, TileState tile, int[][] directions) {
+		int score = 0;
+		int size = GomokuBoard.size;
+		int center = size / 2;
+
+		// Définir le carré central 5x5
+		int centerStart = center - 2; // start=5 pour size=15
+		int centerEnd = center + 2;   // end=9 pour size=15
+
+		for (int row = 0; row < size; row++) {
+			for (int col = 0; col < size; col++) {
+				for (int[] dir : directions) {
+					int count = 0;
+					int r = row, c = col;
+
+					while (r >= 0 && r < size && c >= 0 && c < size && board.get(new Coords(r, c)) == tile) {
+						count++;
+						r += dir[0];
+						c += dir[1];
+					}
+
+					if (count > 0) {
+						boolean open1 = false, open2 = false;
+
+						int beforeR = row - dir[0], beforeC = col - dir[1];
+						if (beforeR >= 0 && beforeR < size && beforeC >= 0 && beforeC < size &&
+								board.get(new Coords(beforeR, beforeC)) == TileState.Empty) {
+							open1 = true;
+						}
+
+						int afterR = row + count * dir[0], afterC = col + count * dir[1];
+						if (afterR >= 0 && afterR < size && afterC >= 0 && afterC < size &&
+								board.get(new Coords(afterR, afterC)) == TileState.Empty) {
+							open2 = true;
+						}
+
+						if (!open1 && !open2 && count < 5) continue;
+
+						int baseScore = switch (count) {
+							case 5 -> Integer.MAX_VALUE; // victoire
+							case 4 -> (open1 && open2) ? 10000 : 5000;
+							case 3 -> (open1 && open2) ? 500 : 100;
+							case 2 -> (open1 && open2) ? 50 : 10;
+							default -> 1; // 1 pion seul
+						};
+
+						// Bonus centralité avec carré 5x5
+						int centralityBonus;
+						if (row >= centerStart && row <= centerEnd && col >= centerStart && col <= centerEnd) {
+							centralityBonus = 10; // carré central
+						} else {
+							int distance = Math.max(Math.abs(row - center), Math.abs(col - center));
+							centralityBonus = Math.max(0, 10 - distance); // décroissance rapide
+						}
+
+						score += baseScore + centralityBonus;
+					}
+				}
+			}
+		}
+		return score;
+	}
 }

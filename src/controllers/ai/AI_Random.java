@@ -9,9 +9,6 @@ import gamecore.enums.TileState;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Représente une IA qui cherche les coups en se positionnant sur chaque case, puis en vérifiant le contenu des 4 cases autour dans les 8 directions
- */
 public class AI_Random extends PlayerController
 {
 
@@ -31,7 +28,8 @@ public class AI_Random extends PlayerController
 	}
 
 
-	public int evaluateBoard(GomokuBoard board) {
+	public int evaluateBoard(GomokuBoard board)
+	{
 		int[][] directions = {{0, 1}, {1, 0}, {1, 1}, {1, -1}};
 		int score = 0;
 
@@ -42,7 +40,8 @@ public class AI_Random extends PlayerController
 		return score;
 	}
 
-	private int evaluateLines(GomokuBoard board, TileState tile, int[][] directions) {
+	private int evaluateLines(GomokuBoard board, TileState tile, int[][] directions)
+	{
 		int score = 0;
 		int size = GomokuBoard.size;
 		int center = size / 2;
@@ -51,37 +50,45 @@ public class AI_Random extends PlayerController
 		int centerStart = center - 2; // start=5 pour size=15
 		int centerEnd = center + 2;   // end=9 pour size=15
 
-		for (int row = 0; row < size; row++) {
-			for (int col = 0; col < size; col++) {
-				for (int[] dir : directions) {
+		for (int row = 0; row < size; row++)
+		{
+			for (int col = 0; col < size; col++)
+			{
+				for (int[] dir : directions)
+				{
 					int count = 0;
 					int r = row, c = col;
 
-					while (r >= 0 && r < size && c >= 0 && c < size && board.get(new Coords(r, c)) == tile) {
+					while (r >= 0 && r < size && c >= 0 && c < size && board.get(new Coords(r, c)) == tile)
+					{
 						count++;
 						r += dir[0];
 						c += dir[1];
 					}
 
-					if (count > 0) {
+					if (count > 0)
+					{
 						boolean open1 = false, open2 = false;
 
 						int beforeR = row - dir[0], beforeC = col - dir[1];
 						if (beforeR >= 0 && beforeR < size && beforeC >= 0 && beforeC < size &&
-								board.get(new Coords(beforeR, beforeC)) == TileState.Empty) {
+								board.get(new Coords(beforeR, beforeC)) == TileState.Empty)
+						{
 							open1 = true;
 						}
 
 						int afterR = row + count * dir[0], afterC = col + count * dir[1];
 						if (afterR >= 0 && afterR < size && afterC >= 0 && afterC < size &&
-								board.get(new Coords(afterR, afterC)) == TileState.Empty) {
+								board.get(new Coords(afterR, afterC)) == TileState.Empty)
+						{
 							open2 = true;
 						}
 
 						if (!open1 && !open2 && count < 5) continue;
 
 						// Attribution du score selon la longueur de la ligne
-						int baseScore = switch (count) {
+						int baseScore = switch (count)
+						{
 							case 5 -> Integer.MAX_VALUE; // victoire
 							case 4 -> (open1 && open2) ? 10000 : 5000;
 							case 3 -> (open1 && open2) ? 500 : 100;
@@ -91,9 +98,12 @@ public class AI_Random extends PlayerController
 
 						// Bonus centralité avec carré 5x5
 						int centralityBonus;
-						if (row >= centerStart && row <= centerEnd && col >= centerStart && col <= centerEnd) {
+						if (row >= centerStart && row <= centerEnd && col >= centerStart && col <= centerEnd)
+						{
 							centralityBonus = 10; // carré central
-						} else {
+						}
+						else
+						{
 							int distance = Math.max(Math.abs(row - center), Math.abs(col - center));
 							centralityBonus = Math.max(0, 10 - distance); // décroissance rapide
 						}
@@ -105,9 +115,6 @@ public class AI_Random extends PlayerController
 		}
 		return score;
 	}
-
-
-
 
 	/*private int evaluateShapes(GomokuBoard board, TileState tile) {
 		int score = 0;
@@ -263,38 +270,39 @@ public class AI_Random extends PlayerController
 	}
 
 	@Override
-	public Coords play(GomokuBoard board, Player player) {
+	public Coords play(GomokuBoard board, Player player)
+	{
 		TileState myTile = (playerColor == Player.White) ? TileState.White : TileState.Black;
 		TileState opponentTile = (playerColor == Player.White) ? TileState.Black : TileState.White;
 		Coords[] moves = getAvailableMoves(board);
 
-		// Cherche une victoire immédiate pour moi
-		for (Coords move : moves) {
+		for (Coords move : moves)
+		{
 			GomokuBoard clone = board.clone();
 			clone.set(move, myTile);
-			if (clone.getWinnerState().name().equalsIgnoreCase(playerColor.name())) {
+			if (clone.getWinnerState().name().equalsIgnoreCase(playerColor.name()))
+			{
 				return move; // victoire directe
 			}
 		}
 
-		// Cherche un coup pour bloquer la victoire immédiate de l’adversaire
-		for (Coords move : moves) {
+		for (Coords move : moves)
+		{
 			GomokuBoard clone = board.clone();
 			clone.set(move, opponentTile);
 			if (clone.getWinnerState().name().equalsIgnoreCase(
-					(playerColor == Player.White) ? "Black" : "White")) {
+					(playerColor == Player.White) ? "Black" : "White"))
+			{
 				return move; // bloque l’adversaire
 			}
 		}
 
-		// Sinon, utilise le minimax habituel
 		return minimax(board, this.minimaxDepth, playerColor == Player.White, playerColor).coords;
 	}
 
 
 	public EvaluationVariable minimax(GomokuBoard board, int depth, boolean isMaximizingPlayer, Player player)
 	{
-		// Cas trivial : plateau quasi vide → joue au centre
 		if (getAvailableMoves(board).length >= 224)
 		{
 			if (board.get(6, 6).equals(TileState.Empty))
@@ -303,9 +311,10 @@ public class AI_Random extends PlayerController
 				return new EvaluationVariable(new Coords(7, 7), Integer.MAX_VALUE);
 		}
 
-		// Condition d'arrêt : profondeur atteinte
 		if (depth == 0)
+		{
 			return new EvaluationVariable(new Coords(), minimaxEval(board));
+		}
 
 		Coords[] moves = getAvailableMoves(board);
 		Coords bestCoords = moves[0];
@@ -316,19 +325,13 @@ public class AI_Random extends PlayerController
 			GomokuBoard clonedBoard = board.clone();
 			TileState myTile = (player == Player.White) ? TileState.White : TileState.Black;
 
-			// Joue le coup
 			clonedBoard.set(move, myTile);
-
-			// Change de joueur pour la récursion
 			Player nextPlayer = (player == Player.White) ? Player.Black : Player.White;
-
-			// Appel récursif
 			EvaluationVariable childEval = minimax(clonedBoard, depth - 1, !isMaximizingPlayer, nextPlayer);
 			childEval.coords = move;
 
 			int finalEval = childEval.evaluationScore;
 
-			// Maximisation ou minimisation
 			if (isMaximizingPlayer)
 			{
 				if (finalEval > bestEval)
@@ -348,8 +351,6 @@ public class AI_Random extends PlayerController
 		}
 		return new EvaluationVariable(bestCoords, bestEval);
 	}
-
-
 
 
 	public int minimaxEval(GomokuBoard board)
