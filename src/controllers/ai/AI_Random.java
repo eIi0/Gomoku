@@ -109,14 +109,14 @@ public class AI_Random extends PlayerController
 
 
 
-	private int evaluateShapes(GomokuBoard board, TileState tile) {
+	/*private int evaluateShapes(GomokuBoard board, TileState tile) {
 		int score = 0;
 		int size = GomokuBoard.size;
 		int center = size / 2;
 
 		int[][] directions = {
-				{0, 1},   // ➡️
-				{1, 0},   // ⬇️
+				{0, 1},   // ➡
+				{1, 0},   // ⬇
 				{1, 1},   // ↘
 				{1, -1}   // ↙
 		};
@@ -126,7 +126,7 @@ public class AI_Random extends PlayerController
 				Coords centerCoord = new Coords(row, col);
 				if (board.get(centerCoord) != TileState.Empty) continue;
 
-				// 🔹 Diagonales (X)
+				//  Diagonales (X)
 				Coords[] diagonals = {
 						new Coords(row - 1, col - 1),
 						new Coords(row - 1, col + 1),
@@ -141,7 +141,7 @@ public class AI_Random extends PlayerController
 					}
 				}
 
-				// 🔹 Côtés (+)
+				//  Côtés (+)
 				Coords[] sides = {
 						new Coords(row - 1, col),
 						new Coords(row + 1, col),
@@ -156,7 +156,7 @@ public class AI_Random extends PlayerController
 					}
 				}
 
-				// 🔸 Côtés ouverts
+				//  Côtés ouverts
 				int openSides = 0;
 				for (Coords s : sides) {
 					if (board.get(s) == TileState.Empty) {
@@ -241,7 +241,7 @@ public class AI_Random extends PlayerController
 		}
 
 		return score;
-	}
+	}*/
 
 	public Coords[] getAvailableMoves(GomokuBoard board)
 	{
@@ -268,7 +268,7 @@ public class AI_Random extends PlayerController
 		TileState opponentTile = (playerColor == Player.White) ? TileState.Black : TileState.White;
 		Coords[] moves = getAvailableMoves(board);
 
-		// 1️⃣ Cherche une victoire immédiate pour moi
+		// Cherche une victoire immédiate pour moi
 		for (Coords move : moves) {
 			GomokuBoard clone = board.clone();
 			clone.set(move, myTile);
@@ -277,7 +277,7 @@ public class AI_Random extends PlayerController
 			}
 		}
 
-		// 2️⃣ Cherche un coup pour bloquer la victoire immédiate de l’adversaire
+		// Cherche un coup pour bloquer la victoire immédiate de l’adversaire
 		for (Coords move : moves) {
 			GomokuBoard clone = board.clone();
 			clone.set(move, opponentTile);
@@ -287,13 +287,14 @@ public class AI_Random extends PlayerController
 			}
 		}
 
-		// 3️⃣ Sinon, utilise le minimax habituel
+		// Sinon, utilise le minimax habituel
 		return minimax(board, this.minimaxDepth, playerColor == Player.White, playerColor).coords;
 	}
 
 
 	public EvaluationVariable minimax(GomokuBoard board, int depth, boolean isMaximizingPlayer, Player player)
 	{
+		// Cas trivial : plateau quasi vide → joue au centre
 		if (getAvailableMoves(board).length >= 224)
 		{
 			if (board.get(6, 6).equals(TileState.Empty))
@@ -302,6 +303,7 @@ public class AI_Random extends PlayerController
 				return new EvaluationVariable(new Coords(7, 7), Integer.MAX_VALUE);
 		}
 
+		// Condition d'arrêt : profondeur atteinte
 		if (depth == 0)
 			return new EvaluationVariable(new Coords(), minimaxEval(board));
 
@@ -313,42 +315,20 @@ public class AI_Random extends PlayerController
 		{
 			GomokuBoard clonedBoard = board.clone();
 			TileState myTile = (player == Player.White) ? TileState.White : TileState.Black;
-			TileState opponentTile = (player == Player.White) ? TileState.Black : TileState.White;
 
+			// Joue le coup
 			clonedBoard.set(move, myTile);
 
-			// ✅ Victoire immédiate
-			if (clonedBoard.getWinnerState().name().equalsIgnoreCase(player.name()))
-			{
-				return new EvaluationVariable(move, Integer.MAX_VALUE);
-			}
-
-			// ⚠️ Vérifie si ce coup laisse une victoire immédiate à l’adversaire
-			boolean givesImmediateLoss = false;
-			for (Coords oppMove : getAvailableMoves(clonedBoard))
-			{
-				clonedBoard.set(oppMove, opponentTile);
-				if (clonedBoard.getWinnerState().name().equalsIgnoreCase(
-						(player == Player.White) ? "Black" : "White"))
-				{
-					givesImmediateLoss = true;
-					clonedBoard.set(oppMove, TileState.Empty);
-					break;
-				}
-				clonedBoard.set(oppMove, TileState.Empty);
-			}
-
-			// ⛔ On n'arrête pas la boucle ici ! On pénalise juste le score
-			int evalPenalty = givesImmediateLoss ? -100000 : 0;
-
-			// 🔁 Exploration plus profonde
+			// Change de joueur pour la récursion
 			Player nextPlayer = (player == Player.White) ? Player.Black : Player.White;
+
+			// Appel récursif
 			EvaluationVariable childEval = minimax(clonedBoard, depth - 1, !isMaximizingPlayer, nextPlayer);
 			childEval.coords = move;
 
-			int finalEval = childEval.evaluationScore + evalPenalty;
+			int finalEval = childEval.evaluationScore;
 
-			// 🔍 Mise à jour du meilleur score
+			// Maximisation ou minimisation
 			if (isMaximizingPlayer)
 			{
 				if (finalEval > bestEval)
@@ -366,9 +346,9 @@ public class AI_Random extends PlayerController
 				}
 			}
 		}
-
 		return new EvaluationVariable(bestCoords, bestEval);
 	}
+
 
 
 
